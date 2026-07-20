@@ -14,29 +14,208 @@
 from __future__ import annotations
 
 import inspect
+import re
+import xml.etree.ElementTree as ET
 from typing import Any, Callable
+
+import requests
 
 from .tool_schemas import TOOL_SCHEMAS
 
 
+# --- HTTP helpers --------------------------------------------------------
+# A short, honest User-Agent. OpenAlex asks callers to identify themselves;
+# a contact address gets us into their faster "polite pool".
+_USER_AGENT = "research-atlas/0.1 (WashU DTRC hackathon; mailto:c.israel@wustl.edu)"
+_TIMEOUT = 20  # seconds; every external call is bounded so the loop can't hang.
+
+
+def _clamp_results(max_results: int) -> int:
+    """Keep result counts sane regardless of what the model asks for."""
+    try:
+        n = int(max_results)
+    except (TypeError, ValueError):
+        return 5
+    return max(1, min(n, 25))
+
+
 # --- Tool bodies  ★ WRITE THESE ★ ----------------------------------------
 
-def word_count(*, text: str) -> dict[str, Any]:
-    return {"ok": True, "word_count": len(text.split()), "char_count": len(text)}
+def search_arxiv(*, query: str, max_results: int = 5) -> dict[str, Any]:
+    """Query the arXiv Atom API and return a list of preprints."""
+    n = _clamp_results(max_results)
+    try:
+        resp = requests.get(
+            "http://export.arxiv.org/api/query",
+            params={
+                "search_query": f"all:{query}",
+                "start": 0,
+                "max_results": n,
+                "sortBy": "relevance",
+            },
+            headers={"User-Agent": _USER_AGENT},
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        return {"ok": False, "source": "arxiv", "error": f"{type(exc).__name__}: {exc}"}
+
+    ns = {"atom": "http://www.w3.org/2005/Atom"}
+    try:
+        root = ET.fromstring(resp.content)
+    except ET.ParseError as exc:
+        return {"ok": False, "source": "arxiv", "error": f"XML parse error: {exc}"}
+
+    papers: list[dict[str, Any]] = []
+    for entry in root.findall("atom:entry", ns):
+        arxiv_url = (entry.findtext("atom:id", default="", namespaces=ns) or "").strip()
+        arxiv_id = arxiv_url.rsplit("/abs/", 1)[-1] if "/abs/" in arxiv_url else arxiv_url
+        title = " ".join((entry.findtext("atom:title", default="", namespaces=ns) or "").split())
+        abstract = " ".join((entry.findtext("atom:summary", default="", namespaces=ns) or "").split())
+        authors = [
+            (a.findtext("atom:name", default="", namespaces=ns) or "").strip()
+            for a in entry.findall("atom:author", ns)
+        ]
+        published = (entry.findtext("atom:published", default="", namespaces=ns) or "").strip()
+        year = published[:4] if len(published) >= 4 and published[:4].isdigit() else None
+        papers.append(
+            {
+                "title": title,
+                "authors": [a for a in authors if a],
+                "year": int(year) if year else None,
+                "abstract": abstract,
+                "url": arxiv_url,
+                "arxiv_id": arxiv_id,
+                "citation_count": None,  # arXiv does not provide citations
+                "source": "arxiv",
+                "peer_reviewed": False,  # preprint server
+            }
+        )
+
+    return {"ok": True, "source": "arxiv", "count": len(papers), "papers": papers}
 
 
-def reverse_text(*, text: str, uppercase: bool = False) -> dict[str, Any]:
-    reversed_text = text[::-1]
-    if uppercase:
-        reversed_text = reversed_text.upper()
-    return {"ok": True, "reversed": reversed_text}
+def search_crossref(
+    *, query: str, year_from: int | None = None, max_results: int = 5
+) -> dict[str, Any]:
+    """Query the Crossref REST API and return matching published works."""
+    n = _clamp_results(max_results)
+    params: dict[str, Any] = {
+        "query": query,
+        "rows": n,
+        "select": "title,author,issued,DOI,is-referenced-by-count,abstract",
+        # Identify ourselves for Crossref's faster "polite pool".
+        "mailto": "c.israel@wustl.edu",
+    }
+    if year_from is not None:
+        try:
+            params["filter"] = f"from-pub-date:{int(year_from)}-01-01"
+        except (TypeError, ValueError):
+            pass  # ignore a non-numeric year rather than failing the search
+
+    try:
+        resp = requests.get(
+            "https://api.crossref.org/works",
+            params=params,
+            headers={"User-Agent": _USER_AGENT},
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException as exc:
+        return {"ok": False, "source": "crossref", "error": f"{type(exc).__name__}: {exc}"}
+    except ValueError as exc:
+        return {"ok": False, "source": "crossref", "error": f"JSON parse error: {exc}"}
+
+    papers: list[dict[str, Any]] = []
+    for item in (data.get("message") or {}).get("items") or []:
+        doi = item.get("DOI")
+        title = " ".join((item.get("title") or [""])[0].split()) if item.get("title") else ""
+        authors = [
+            " ".join(part for part in [a.get("given"), a.get("family")] if part).strip()
+            for a in (item.get("author") or [])
+        ]
+        # 'issued' -> date-parts: [[year, month, day]]
+        date_parts = (item.get("issued") or {}).get("date-parts") or [[]]
+        year = date_parts[0][0] if date_parts and date_parts[0] else None
+        # Crossref abstracts, when present, are JATS XML; strip the tags.
+        abstract = item.get("abstract") or ""
+        if abstract:
+            abstract = " ".join(re.sub(r"<[^>]+>", " ", abstract).split())
+        papers.append(
+            {
+                "title": title,
+                "authors": [a for a in authors if a],
+                "year": year,
+                "abstract": abstract,
+                "url": f"https://doi.org/{doi}" if doi else "",
+                "doi": doi,
+                "citation_count": item.get("is-referenced-by-count"),
+                "source": "crossref",
+            }
+        )
+
+    return {"ok": True, "source": "crossref", "count": len(papers), "papers": papers}
+
+
+def _reconstruct_abstract(inverted_index: dict[str, list[int]] | None) -> str:
+    """OpenAlex stores abstracts as an inverted index {word: [positions]}; rebuild it."""
+    if not inverted_index:
+        return ""
+    positioned: list[tuple[int, str]] = []
+    for word, positions in inverted_index.items():
+        for pos in positions:
+            positioned.append((pos, word))
+    positioned.sort(key=lambda pair: pair[0])
+    return " ".join(word for _, word in positioned)
+
+
+def search_openalex(*, query: str, max_results: int = 5) -> dict[str, Any]:
+    """Query the OpenAlex works API and return matching scholarly works."""
+    n = _clamp_results(max_results)
+    try:
+        resp = requests.get(
+            "https://api.openalex.org/works",
+            params={"search": query, "per-page": n},
+            headers={"User-Agent": _USER_AGENT},
+            timeout=_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException as exc:
+        return {"ok": False, "source": "openalex", "error": f"{type(exc).__name__}: {exc}"}
+    except ValueError as exc:
+        return {"ok": False, "source": "openalex", "error": f"JSON parse error: {exc}"}
+
+    papers: list[dict[str, Any]] = []
+    for item in data.get("results") or []:
+        doi = item.get("doi")  # already a full https://doi.org/... URL when present
+        authors = [
+            (auth.get("author") or {}).get("display_name", "").strip()
+            for auth in (item.get("authorships") or [])
+        ]
+        papers.append(
+            {
+                "title": item.get("title") or item.get("display_name") or "",
+                "authors": [a for a in authors if a],
+                "year": item.get("publication_year"),
+                "abstract": _reconstruct_abstract(item.get("abstract_inverted_index")),
+                "url": doi or item.get("id") or "",
+                "doi": doi,
+                "citation_count": item.get("cited_by_count"),
+                "source": "openalex",
+            }
+        )
+
+    return {"ok": True, "source": "openalex", "count": len(papers), "papers": papers}
 
 
 # --- Registry (one entry per tool)  ★ EDIT ★ -----------------------------
 
 TOOL_REGISTRY: dict[str, Callable[..., dict[str, Any]]] = {
-    "word_count": word_count,
-    "reverse_text": reverse_text,
+    "search_arxiv": search_arxiv,
+    "search_crossref": search_crossref,
+    "search_openalex": search_openalex,
 }
 
 
