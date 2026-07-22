@@ -149,7 +149,9 @@ def _serve_handler(args: argparse.Namespace) -> None:
     handler = handler_class({})  # AgentHandler.__init__(config) — non-secret config
     executor = HandlerExecutor(handler)
 
-    url = f"http://{args.host}:{args.port}/"
+    # A wildcard bind address is not dialable; advertise a loopback host instead.
+    advertise_host = "127.0.0.1" if args.host in ("0.0.0.0", "", "::") else args.host
+    url = f"http://{advertise_host}:{args.port}/"
     if args.card is not None:
         card = load_agent_card(args.card)
     else:
