@@ -111,6 +111,14 @@ def run_tool_loop(
         request_kwargs["messages"] = messages
         response = client.chat.completions.create(**request_kwargs)
 
+    # If the step budget is exhausted while the model still wants to call tools, the
+    # loop above stops with `response` holding an unanswered tool-call turn, so
+    # `_final_text` would be empty and all the tool work would be discarded. Make one
+    # final tool-free call to force the model to synthesize an answer from what it has
+    # already retrieved, rather than returning nothing.
+    if _extract_tool_calls(response):
+        response = client.chat.completions.create(model=model, messages=messages)
+
     return _final_text(response), tool_log
 
 
