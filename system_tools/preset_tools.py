@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import math
 import operator
 from datetime import datetime, timezone
 from typing import Annotated, Any, Callable
@@ -65,6 +66,8 @@ def calculator(
         result = _eval_node(tree)
     except Exception as exc:  # malformed / disallowed input -> tool error, not a crash
         return {"ok": False, "error": f"could not evaluate {expression!r}: {exc}"}
+    if isinstance(result, complex) or (isinstance(result, float) and not math.isfinite(result)):
+        return {"ok": False, "error": f"result of {expression!r} is not a finite real number (got {result!r})"}
     return {"ok": True, "expression": expression, "result": result}
 
 
