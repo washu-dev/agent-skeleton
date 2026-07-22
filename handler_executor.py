@@ -116,12 +116,17 @@ class HandlerExecutor(AgentExecutorBase):
             )
             return
 
-        if "answer" not in result:
+        if not isinstance(result, dict) or not isinstance(result.get("answer"), str):
+            detail = (
+                f"non-dict ({type(result).__name__})"
+                if not isinstance(result, dict)
+                else f"dict with answer of type {type(result.get('answer')).__name__}"
+            )
             await updater.failed(
                 message=updater.new_agent_message(
                     [text_part(
-                        "handle_structured() must return a dict with an 'answer' key. "
-                        f"Got keys: {list(result.keys())}"
+                        "handle_structured() must return a dict with a string 'answer' key; "
+                        f"got a {detail}."
                     )]
                 )
             )
