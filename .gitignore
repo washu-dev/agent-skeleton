@@ -3,3 +3,8 @@ __pycache__/
 *.egg-info/
 .venv/
 .DS_Store
+
+# Secrets — never commit real credentials (ship a value-less .env.example instead)
+.env
+.env.*
+!.env.example
