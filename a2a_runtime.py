@@ -10,11 +10,25 @@ error via require_a2a().
 """
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # for type checkers only; never executed at runtime
     from a2a.server.events import EventQueue
     from a2a.server.tasks import TaskUpdater
+
+# a2a-sdk==0.3.2 (pinned deliberately -- see pyproject.toml, since newer
+# releases moved a2a.server.apps) imports Starlette's
+# HTTP_413_REQUEST_ENTITY_TOO_LARGE constant, which is deprecated in newer
+# Starlette in favor of HTTP_413_CONTENT_TOO_LARGE. This is harmless noise
+# coming from the pinned dependency, not from this codebase, so it's
+# suppressed at the source rather than left to confuse users running
+# `serve check` for the first time.
+warnings.filterwarnings(
+    "ignore",
+    message=".*HTTP_413_REQUEST_ENTITY_TOO_LARGE.*",
+    category=Warning,
+)
 
 try:
     from a2a.server.agent_execution import AgentExecutor as AgentExecutorBase
