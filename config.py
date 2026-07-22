@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 
 # --- Identity -------------------------------------------------------------
-AGENT_NAME = "Skeleton Agent"     # ★ set to your agent's name
+AGENT_NAME = "research-atlas"     # ★ set to your agent's name
 
 # --- Networking -----------------------------------------------------------
 DEFAULT_HOST = "0.0.0.0"          # bind address (listen on all interfaces)
@@ -16,7 +16,8 @@ DEFAULT_PORT = 9110               # pick a free port
 
 # --- LLM ------------------------------------------------------------------
 DEFAULT_MODEL = "gpt-4o-mini"     # hosted model name, or your vLLM --served-model-name
-MAX_TOOL_STEPS = 4                # cap on tool-call loop iterations
+MAX_TOOL_STEPS = 8                # cap on tool-call loop iterations (research-atlas
+                                  # may query several sources + refine, so allow room)
 
 # --- Paths ----------------------------------------------------------------
 PACKAGE_DIR = Path(__file__).resolve().parent

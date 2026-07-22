@@ -1,13 +1,13 @@
 {
-  "name": "Skeleton Agent",
-  "description": "A template A2A agent that answers requests and can call simple text tools. Replace this with your agent's real capabilities.",
+  "name": "research-atlas",
+  "description": "Given a research topic or question, searches real academic sources (arXiv, Crossref, OpenAlex) and returns an organized, trustworthy reading list — grouped by theme, flagged for conflicting findings, and honest about what it could not find or verify. Cites only papers it actually retrieved.",
   "url": "http://127.0.0.1:9110/",
   "version": "0.1.0",
   "protocolVersion": "0.3.0",
   "preferredTransport": "JSONRPC",
   "provider": {
-    "organization": "Your Org",
-    "url": "https://example.invalid/your-org"
+    "organization": "WashU DTRC Hackathon",
+    "url": "https://github.com/SoyIsrael/research-atlas"
   },
   "capabilities": {
     "streaming": true,
@@ -20,13 +20,15 @@
   "security": [],
   "skills": [
     {
-      "id": "skeleton/answer",
-      "name": "Answer a request",
-      "description": "Answer a natural-language request, optionally using helper tools, and return a structured answer.",
-      "tags": ["skeleton/answer", "skeleton", "demo", "read"],
+      "id": "research-atlas/literature-search",
+      "name": "Literature search & reading list",
+      "description": "Search academic sources for a research topic or question and return a structured reading list grouped by theme, with citation counts and DOIs/links, conflicting findings flagged, and explicit notes on gaps or unverifiable claims. Cites only papers actually retrieved from arXiv, Crossref, or OpenAlex.",
+      "tags": ["research-atlas/literature-search", "research", "literature-review", "citations", "read"],
       "examples": [
-        "How many words are in 'the quick brown fox'?",
-        "Reverse the text 'hello world' and upper-case it."
+        "Find recent work on graph neural networks for drug discovery.",
+        "I'm starting a lit review on social determinants of health — give me an organized reading list.",
+        "What does the literature say about CRISPR off-target effects since 2021?",
+        "Summarize key papers on transformer interpretability, grouped by approach."
       ],
       "inputModes": ["text/plain", "application/json"],
       "outputModes": ["text/plain", "application/json"],
