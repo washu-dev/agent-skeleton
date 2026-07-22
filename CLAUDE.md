@@ -14,8 +14,8 @@ A small, self-contained template for building an **A2A agent**. It isolates the
 that is the actual agent into a few "write" files. It offers two build paths (plus
 one optional third), all driven by one frozen engine:
 
-- **Path A** — a hand-authored LLM tool loop (`tool_schemas.py` + `tools.py` +
-  `prompt.py`), run by `llm_loop.run_tool_loop`.
+- **Path A** — a hand-authored LLM tool loop: typed `@tool` functions in `tools.py`
+  (+ `prompt.py`), run by `llm_loop.run_tool_loop`.
 - **Path B** — a custom handler: subclass `AgentHandler` and implement
   `handle_structured`, run by `HandlerExecutor`.
 - **Optional** — the `endpoint_wrapper/` subpackage: front an existing HTTP/API
@@ -37,11 +37,11 @@ concern, out of scope for this template.)
 
 | File | Status | Notes |
 |---|---|---|
-| `tool_schemas.py` | **WRITE** | `TOOL_SCHEMAS`: Chat Completions shape |
+| `tools.py` | **WRITE** | your tools as typed `@tool` functions inside `build_tools(config)` (schema derived); `validate_tool_registry()` |
 | `prompt.py` | **WRITE** | `SYSTEM_PROMPT` + `normalize_result()` |
-| `tools.py` | **WRITE bodies** | tool fns + `TOOL_REGISTRY` + `validate_tool_registry()` |
 | `agent.card.json` | **WRITE** | skills, url, version |
 | `config.py` | edit defaults | name, host/port, model |
+| `tool.py` | copy | `@tool` + `collect_tools`: derive schemas from typed functions |
 | `llm_loop.py` | copy | generic loop; `run_agent()` wires prompt/tools/dispatch |
 | `spec.py` | copy | `AgentSpec` seam (prompt+tools as data) + `default_demo_spec` + `llm_wrapper_spec` |
 | `executor.py` | copy | `SkeletonAgentExecutor.execute()` + A2A I/O |
@@ -62,24 +62,23 @@ engine and run `serve check` with no network and no `a2a-sdk` installed.
 
 ## 4. How to add a tool (Path A)
 
-1. Add a schema to `TOOL_SCHEMAS` in `tool_schemas.py`.
-2. Write the function in `tools.py` with **keyword args named exactly like the
-   schema properties**; optional properties must have a default.
-3. Add it to `TOOL_REGISTRY`.
-4. `python -m agent_skeleton.serve check` — confirms schema and function agree
-   before you ever serve.
+1. Write a typed function decorated with `@tool` INSIDE `build_tools(config)` in
+   `tools.py`; annotate its params (use `Annotated[T, "description"]` to document
+   one) and give it a docstring. Add it to the list `build_tools` returns.
+2. The schema is derived from the signature — there is nothing else to write.
+   `@tool` turns the typed function into the tool the LLM sees (see §5).
+3. To bake config/auth, read it from `config` inside the tool — it's captured by the
+   closure and never exposed to the model. Put fixed configuration in `CONFIG`.
+4. `python -m agent_skeleton.serve check` — confirms everything still aligns.
 
-## 5. The alignment check (and making drift impossible)
+## 5. Schemas are derived (drift is impossible)
 
-`validate_tool_registry()` (in `tools.py`) verifies name coverage (both directions),
-property↔parameter correspondence, and that optional properties have defaults. It runs
-in `create_app()` and as `serve check`.
-
-**Stronger option — make drift impossible:** instead of hand-writing `TOOL_SCHEMAS`
-*and* the function and checking they match, generate the schema *from* a typed function
-(introspect type hints + docstring, or a `pydantic` model → `model_json_schema()`).
-Then there is one source of truth and the schema cannot disagree. The current check is
-the cheaper belt-and-suspenders version; both can coexist.
+`@tool` (in `tool.py`) derives each tool's schema from its typed signature +
+docstring, so there is ONE source of truth and the schema cannot disagree with the
+function. `validate_tool_registry()` (in `tools.py`) remains as a safety net for any
+HAND-WRITTEN schemas (e.g. the endpoint-wrapper tools, or a registry assembled by
+hand); it runs in `create_app()` and as `serve check`, and for `@tool` tools it
+always passes. A tool that declares `**kwargs` opts out of the strict parameter check.
 
 ## 6. Gotchas
 

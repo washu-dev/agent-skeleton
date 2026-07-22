@@ -3,8 +3,8 @@
 This folder is a **third, optional** way to build an agent on top of the skeleton,
 separate from the two main template paths:
 
-- **Path A** — hand-author an LLM tool loop (edit `tool_schemas.py` / `tools.py` /
-  `prompt.py`). See the repo `README.md`.
+- **Path A** — hand-author an LLM tool loop (typed `@tool` functions in `tools.py`
+  + `prompt.py`). See the repo `README.md`.
 - **Path B** — wrap your own code as a custom-upload handler (`AgentHandler` +
   `handle_structured`). See `INTEGRATION_GUIDE.md`.
 - **Endpoint wrapper (here)** — point an LLM loop at an *existing HTTP/JSON or A2A

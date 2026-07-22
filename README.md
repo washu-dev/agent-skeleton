@@ -40,20 +40,41 @@ alone — you can validate an agent without installing anything. `a2a-sdk` + `uv
 
 ## Path A — build an LLM tool loop
 
-Edit four "write" files; leave everything else alone:
+Edit these "write" files; leave everything else alone:
 
 | File | You write |
 |---|---|
-| `tool_schemas.py` | `TOOL_SCHEMAS` — a JSON description of each tool (OpenAI Chat Completions shape) |
-| `tools.py` | one Python function per tool + the `TOOL_REGISTRY` `{name: fn}` map |
+| `tools.py` | your tools, as typed `@tool` functions, added to a `TOOLS` list — the schema is **derived** from each function |
 | `prompt.py` | `SYSTEM_PROMPT` + `normalize_result()` (the stable output shape) |
 | `agent.card.json` | your agent's name, url, and skills |
 
-The rules that keep a tool correct (checked for you — see below):
+Each tool is a typed function decorated with `@tool`. **`@tool` reads the function's
+signature + type hints + docstring and *derives* the JSON schema the model sees** —
+so there's no separate schema to hand-write, and it can't drift from the code.
 
-- each function's keyword args are named **exactly** like its schema properties;
-- every **optional** property (not in `required`) has a Python default;
-- each function returns a JSON-able dict.
+Define all your tools inside `build_tools(config)`. The factory closes over your
+agent's `config`, so any secret or handle in it (an API key, a DB connection, a
+tenant id) is baked into every tool **once** and is never shown to or set by the LLM —
+it isn't a parameter, so it never reaches the schema:
+
+```python
+def build_tools(config):
+    @tool
+    def word_count(*, text: str) -> dict:            # tool "word_count"
+        """Count the words in a piece of text."""    # -> description; params: {text: string}
+        return {"ok": True, "count": len(text.split())}
+
+    @tool(name="web_search")
+    def web_search(*, query: str, max_results: int = 5) -> dict:
+        """Search the web for a query."""
+        # config["search_api_key"] is baked in — the LLM only sets query/max_results
+        return _search(query, max_results, api_key=config["search_api_key"])
+
+    return [word_count, web_search]
+```
+
+`collect_tools(build_tools(config))` produces the `TOOL_SCHEMAS` + `TOOL_REGISTRY`
+the engine runs — one source of truth (the demo `tools.py` already wires this up).
 
 Then verify and run:
 
@@ -121,12 +142,13 @@ questions to answer about your code, dependencies, credentials, and a worked exa
 
 ## File map — where to edit, where not to
 
-**Write (Path A):** `tool_schemas.py`, `tools.py`, `prompt.py`, `agent.card.json`, `config.py` (defaults).
+**Write (Path A):** `tools.py`, `prompt.py`, `agent.card.json`, `config.py` (defaults).
 **Write (Path B):** your `handler.py` (subclass `AgentHandler`).
 **Copy — the frozen plumbing, rarely edited:**
 
 | File | Role |
 |---|---|
+| `tool.py` | `@tool` + `collect_tools` — derive a tool's schema from its typed function |
 | `llm_loop.py` | the generic Chat-Completions tool loop (`run_tool_loop`, `run_agent`) |
 | `spec.py` | `AgentSpec` — prompt + tools as data; one engine serves many agents |
 | `executor.py` | `SkeletonAgentExecutor` — the Path-A A2A boundary |
@@ -145,9 +167,10 @@ questions to answer about your code, dependencies, credentials, and a worked exa
   the model's typed `tool_calls` field — never regex-parsed.
 - **Dual-channel response.** Every reply carries a machine-readable `DataPart`
   (structured output the planner reads) *and* a human-readable text message.
-- **The alignment check** (`tools.validate_tool_registry`) reconciles each tool
-  schema against its function signature; it runs in `create_app` and `serve check`.
-  (A tool that declares `**kwargs` opts out of the check.)
+- **Schemas are derived, not hand-written.** `@tool` builds each tool's schema from
+  its function signature, so schema and code can't disagree. `serve check`
+  (`tools.validate_tool_registry`) still validates any hand-written schemas; a tool
+  that declares `**kwargs` opts out of the check.
 
 ---
 

@@ -1,46 +1,88 @@
-"""ZONE 4 — Tool dispatch + tool bodies.  ★ WRITE THE BODIES ★ (dispatch is copy)
+"""ZONE — Your tools.  ★ WRITE THESE ★
 
-- Tool BODIES (word_count, reverse_text): your real Python — replace them with
-  your agent's actual capabilities. Each takes keyword args named exactly like
-  its schema `properties` and returns a JSON-able dict.
-- TOOL_REGISTRY: the {name: function} map. This REPLACES a hand-written if/elif
-  tool chain. Adding a tool = write a function + add one registry entry + add one
-  schema in tool_schemas.py. The LLM loop dispatches over this registry via
-  ``AgentSpec.dispatch`` (see spec.py).
-- validate_tool_registry(): a startup alignment check many hand-rolled agents
-  lack. It fails fast if a schema and its function disagree, instead of failing
-  silently at runtime as `{"ok": False, "error": ...}`.
+Define your agent's tools here. Each tool is an ordinary typed Python function
+decorated with ``@tool``.
+
+What ``@tool`` does
+-------------------
+``@tool`` reads the function's SIGNATURE (parameter names, type hints, defaults)
+and its DOCSTRING and DERIVES the JSON schema the LLM sees (the OpenAI "Chat
+Completions" tool description). You never hand-write that JSON, and it cannot drift
+from the code because it IS the code. For example::
+
+    @tool
+    def word_count(*, text: str) -> dict:            # -> tool named "word_count"
+        \"\"\"Count the words in a piece of text.\"\"\"      # -> the tool's description
+        ...                                          # -> parameters: {text: string, required}
+
+Rules ``@tool`` follows: each parameter becomes a property; a parameter with no
+default is ``required``; ``Annotated[T, "..."]`` supplies a parameter description;
+``*args`` / ``**kwargs`` are ignored. Your function returns a JSON-able dict.
+
+Baking configuration (auth, connections) — the ``build_tools()`` factory
+------------------------------------------------------------------------
+Define ALL your tools inside ``build_tools(config)``. Because the tools are created
+inside that function they CLOSE OVER ``config`` — any API key, DB handle, or tenant
+id in ``config`` is baked into every tool ONCE and is never shown to, or chosen by,
+the LLM (it isn't a function parameter, so it never appears in the schema). Put
+per-request inputs in the function parameters; put fixed configuration in ``config``.
 """
 from __future__ import annotations
 
 import inspect
-from typing import Any, Callable
+import os
+from typing import Annotated, Any, Callable
 
-from .tool_schemas import TOOL_SCHEMAS
-
-
-# --- Tool bodies  ★ WRITE THESE ★ ----------------------------------------
-
-def word_count(*, text: str) -> dict[str, Any]:
-    return {"ok": True, "word_count": len(text.split()), "char_count": len(text)}
+from .tool import collect_tools, tool
 
 
-def reverse_text(*, text: str, uppercase: bool = False) -> dict[str, Any]:
-    reversed_text = text[::-1]
-    if uppercase:
-        reversed_text = reversed_text.upper()
-    return {"ok": True, "reversed": reversed_text}
-
-
-# --- Registry (one entry per tool)  ★ EDIT ★ -----------------------------
-
-TOOL_REGISTRY: dict[str, Callable[..., dict[str, Any]]] = {
-    "word_count": word_count,
-    "reverse_text": reverse_text,
+# Fixed configuration for your agent. Read secrets from the environment — never
+# hard-code them. Everything here is baked into your tools by build_tools(), so the
+# LLM never sees it. Leave it empty if your tools need no configuration.
+CONFIG: dict[str, Any] = {
+    "reply_prefix": os.getenv("AGENT_REPLY_PREFIX", "[demo] "),
+    # "search_api_key": os.environ["SEARCH_API_KEY"],   # e.g. a real credential
 }
 
 
-# --- The alignment check -----------------
+def build_tools(config: dict[str, Any]) -> list[Callable[..., dict[str, Any]]]:
+    """Define ALL your tools here and return them as a list.
+
+    ``config`` is captured by every tool defined below (a closure), so its values
+    are baked in and invisible to the LLM. Replace these demo tools with your own;
+    the ones that don't need configuration simply ignore ``config``.
+    """
+    reply_prefix = config["reply_prefix"]
+
+    @tool
+    def word_count(*, text: Annotated[str, "The text to measure."]) -> dict[str, Any]:
+        """Count the words and characters in a piece of text."""
+        return {"ok": True, "word_count": len(text.split()), "char_count": len(text)}
+
+    @tool
+    def reverse_text(
+        *,
+        text: Annotated[str, "The text to reverse."],
+        uppercase: Annotated[bool, "If true, upper-case the reversed text."] = False,
+    ) -> dict[str, Any]:
+        """Reverse a piece of text, optionally upper-casing the result."""
+        out = text[::-1]
+        return {"ok": True, "reversed": out.upper() if uppercase else out}
+
+    @tool(name="echo", description="Echo the text back with the agent's preset prefix.")
+    def echo(*, text: Annotated[str, "The text to echo."]) -> dict[str, Any]:
+        # `reply_prefix` is baked in from config — the LLM only supplies `text`.
+        return {"ok": True, "result": f"{reply_prefix}{text}"}
+
+    return [word_count, reverse_text, echo]
+
+
+# Assemble the schemas + registry the engine consumes, from the tools above.
+# One source of truth: the schema for each tool is derived from its function.
+TOOL_SCHEMAS, TOOL_REGISTRY = collect_tools(build_tools(CONFIG))
+
+
+# --- The alignment check (safety net for hand-written schemas) ------------
 
 def validate_tool_registry(
     schemas: list[dict[str, Any]] | None = None,
@@ -48,13 +90,14 @@ def validate_tool_registry(
 ) -> None:
     """Fail fast if schemas and functions disagree. Called by serve.create_app.
 
-    For every tool it checks that:
+    For ``@tool`` tools the schema is derived from the signature, so this always
+    passes; it still guards any HAND-WRITTEN schema (e.g. the endpoint-wrapper
+    tools) or a registry a caller assembles by hand. For every tool it checks:
       * the schema `name` has a function (and every function has a schema);
       * every schema property is a keyword parameter of the function;
-      * every OPTIONAL property's parameter carries a default (so the model may
-        omit it without a TypeError at call time);
-      * the function has no required parameter that the schema does not declare.
-    A function may declare **kwargs to opt out of the strict parameter checks.
+      * every OPTIONAL property's parameter carries a default;
+      * the function has no required parameter the schema does not declare.
+    A function may declare ``**kwargs`` to opt out of the strict parameter checks.
 
     Raises ValueError listing ALL problems; returns None when everything aligns.
     """

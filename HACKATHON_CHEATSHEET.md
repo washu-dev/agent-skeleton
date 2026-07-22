@@ -7,8 +7,8 @@ generated for you.
 
 ## 1. Pick a path and build it
 
-- **Option A — an LLM tool loop.** Edit `tool_schemas.py`, `tools.py`, `prompt.py`,
-  and `agent.card.json`. See [README.md](README.md).
+- **Option A — an LLM tool loop.** Write typed `@tool` functions in `tools.py`, plus
+  `prompt.py` and `agent.card.json`. See [README.md](README.md).
 - **Option B — wrap your own code.** Add a small `handler.py` that subclasses
   `AgentHandler`. See [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md).
 
@@ -66,7 +66,7 @@ Share a repo with us!
 
 ## Checklist
 
-- [ ] Built as Option A (3 config files) or Option B (`handler.py` + your code).
+- [ ] Built as Option A (`@tool` functions in `tools.py` + prompt) or Option B (`handler.py` + your code).
 - [ ] Runs locally and returns `{"answer": ...}` / a final answer.
 - [ ] `README.md` with description, explicit I/O, and entry-point file + class.
 - [ ] Dependencies listed — pip packages **and** any system binaries **and** hardware.

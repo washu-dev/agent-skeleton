@@ -82,8 +82,7 @@ def default_demo_spec() -> AgentSpec:
     behave exactly as the stock template did."""
     from .config import AGENT_NAME
     from .prompt import SYSTEM_PROMPT, normalize_result
-    from .tool_schemas import TOOL_SCHEMAS
-    from .tools import TOOL_REGISTRY
+    from .tools import TOOL_REGISTRY, TOOL_SCHEMAS
 
     return AgentSpec(
         name=AGENT_NAME,

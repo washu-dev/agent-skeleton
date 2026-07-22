@@ -1,18 +1,13 @@
 """Preset-tool catalog — built-in tools a creator can arm an LLM wrapper with.
 
-The "LLM wrapper" agent type used to be system-prompt-only. This catalog lets a
-creator select tools *by name* (e.g. ``["calculator", "current_time"]``); the
-spec builder (``spec.llm_wrapper_spec``) resolves those names into the
-``(schema, fn)`` pairs the frozen engine already knows how to run.
+A creator selects tools by name (e.g. ``["calculator", "current_time"]``) via
+``spec.llm_wrapper_spec``; the resolver turns those names into the ``(schema, fn)``
+pairs the frozen engine runs.
 
-Design rules (so this stays safe and driftless):
-  * Each tool is a ``(schema, fn)`` pair in the SAME shape as ``tool_schemas`` /
-    ``tools`` — the ``validate_tool_registry`` alignment check must pass.
-  * Tool bodies take keyword args named exactly like their schema properties and
-    return a JSON-able dict.
-  * The starter set is deliberately PURE and dependency-free (no network, no
-    secrets, no filesystem) so it needs no security review. Tools that touch the
-    network or credentials are intentionally kept out of this catalog.
+Each tool is defined with ``@tool`` (see ``tool.py``), so its schema is DERIVED from
+the typed function — the same explicit, driftless definition pattern the template
+recommends for user tools. The starter set is deliberately PURE and dependency-free
+(no network, no secrets, no filesystem) so it needs no security review.
 """
 from __future__ import annotations
 
@@ -20,7 +15,9 @@ import ast
 import copy
 import operator
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Annotated, Any, Callable
+
+from ..tool import tool
 
 ToolFn = Callable[..., dict[str, Any]]
 
@@ -57,8 +54,12 @@ def _eval_node(node: ast.AST) -> float:
     raise ValueError(f"unsupported expression element: {type(node).__name__}")
 
 
-def calculator(*, expression: str) -> dict[str, Any]:
-    """Evaluate a basic arithmetic expression safely (numbers + - * / % ** // only)."""
+@tool
+def calculator(
+    *,
+    expression: Annotated[str, "The arithmetic expression, e.g. '2 * (3 + 4)'."],
+) -> dict[str, Any]:
+    """Evaluate a basic arithmetic expression (+ - * / % ** // and parentheses, numbers only)."""
     try:
         tree = ast.parse(expression, mode="eval")
         result = _eval_node(tree)
@@ -67,58 +68,21 @@ def calculator(*, expression: str) -> dict[str, Any]:
     return {"ok": True, "expression": expression, "result": result}
 
 
-_CALCULATOR_SCHEMA: dict[str, Any] = {
-    "type": "function",
-    "function": {
-        "name": "calculator",
-        "description": (
-            "Evaluate a basic arithmetic expression. Supports + - * / % ** // and "
-            "parentheses over numbers only — no variables or function calls."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "expression": {
-                    "type": "string",
-                    "description": "The arithmetic expression, e.g. '2 * (3 + 4)'.",
-                },
-            },
-            "required": ["expression"],
-            "additionalProperties": False,
-        },
-    },
-}
-
-
 # --- current_time: UTC clock (no args) ------------------------------------
 
+@tool
 def current_time() -> dict[str, Any]:
-    """Return the current UTC date/time as ISO-8601 and a Unix timestamp."""
+    """Return the current date and time in UTC (ISO-8601 string + Unix timestamp)."""
     now = datetime.now(timezone.utc)
     return {"ok": True, "utc_iso": now.isoformat(), "unix": now.timestamp()}
 
 
-_CURRENT_TIME_SCHEMA: dict[str, Any] = {
-    "type": "function",
-    "function": {
-        "name": "current_time",
-        "description": "Return the current date and time in UTC (ISO-8601 string + Unix timestamp).",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": [],
-            "additionalProperties": False,
-        },
-    },
-}
-
-
 # --- Catalog + resolver ---------------------------------------------------
 
-# name -> (schema, fn). Add new entries here; each must pass validate_tool_registry.
+# name -> (schema, fn). Schemas are derived by @tool; add new entries here.
 PRESET_TOOLS: dict[str, tuple[dict[str, Any], ToolFn]] = {
-    "calculator": (_CALCULATOR_SCHEMA, calculator),
-    "current_time": (_CURRENT_TIME_SCHEMA, current_time),
+    "calculator": (calculator._tool_schema, calculator),
+    "current_time": (current_time._tool_schema, current_time),
 }
 
 

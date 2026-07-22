@@ -3,9 +3,9 @@
 Two main ways to build on this skeleton:
 
   Path A — hand-author an LLM tool loop. Edit these; everything else is plumbing:
-       tool_schemas.py  — your tools' JSON schemas        (ZONE 1)
-       prompt.py        — system prompt + result shape     (ZONE 2)
-       tools.py         — your tool functions + registry   (ZONE 4)
+       tools.py         — your tools, as typed @tool functions (the schema the LLM
+                          sees is derived from each function — no separate schema file)
+       prompt.py        — system prompt + result shape
        agent.card.json  — your skills & endpoint
        Verify with `python -m agent_skeleton.serve check`, run with `serve-a2a`.
 
@@ -23,14 +23,18 @@ own README).
 See README.md for the walkthrough and CLAUDE.md for working notes.
 
 Exposed API:
+    tool, collect_tools                              — define typed Path-A tools
     AgentSpec, default_demo_spec, llm_wrapper_spec   — the Path-A spec engine
-    AgentHandler, FileInput, HandlerExecutor          — Path-B custom handlers
+    AgentHandler, FileInput, HandlerExecutor         — Path-B custom handlers
 """
 from __future__ import annotations
 
 from .spec import AgentSpec, default_demo_spec, llm_wrapper_spec
+from .tool import collect_tools, tool
 
 __all__ = [
+    "tool",
+    "collect_tools",
     "AgentSpec",
     "default_demo_spec",
     "llm_wrapper_spec",
