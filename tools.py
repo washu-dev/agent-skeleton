@@ -115,7 +115,12 @@ def validate_tool_registry(
             continue
         schema_names.append(name)
 
+        if schema.get("type") != "function":
+            problems.append(f"[{name}] schema 'type' must be 'function', got {schema.get('type')!r}")
+
         params = fn_spec.get("parameters") or {}
+        if params.get("type") != "object":
+            problems.append(f"[{name}] parameters 'type' must be 'object', got {params.get('type')!r}")
         props = set((params.get("properties") or {}).keys())
         required = set(params.get("required") or [])
 
