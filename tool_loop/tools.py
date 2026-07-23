@@ -33,7 +33,7 @@ import inspect
 import os
 from typing import Annotated, Any, Callable
 
-from .tool_engine import collect_tools, tool
+from ..core.tool_engine import collect_tools, tool
 
 
 # Fixed configuration for your agent. Read secrets from the environment — never

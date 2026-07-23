@@ -1,12 +1,13 @@
-"""agent_skeleton.endpoint_wrapper — OPTIONAL "wrap an external API" feature.
+"""agent_skeleton.endpoint_wrapper — OPTION 1: "wrap an external API".
 
-This is a THIRD way to build an agent, separate from the two main template paths
-(A: hand-authored LLM tool loop; B: custom-upload handler). Instead of writing
-tool bodies or handler code, you point an LLM loop at an existing HTTP/JSON (or
-A2A) endpoint: the model translates each request into a call and reads the reply.
+One of the skeleton's three build options, alongside ``agent_skeleton.tool_loop``
+(a hand-authored LLM tool loop) and ``agent_skeleton.custom`` (a custom-code
+handler). Instead of writing tool bodies or handler code, you point an LLM loop at
+an existing HTTP/JSON (or A2A) endpoint: the model translates each request into a
+call and reads the reply.
 
-Everything about this feature — code, tests, and docs — lives in this folder. The
-rest of the skeleton only references it in one line. See README.md here for the
+Everything unique to this option — code, tests, and docs — lives in this folder; it
+imports the shared engine from ``agent_skeleton.core``. See README.md here for the
 full walkthrough. Serve one with:
 
     python -m agent_skeleton.endpoint_wrapper --card my.card.json \

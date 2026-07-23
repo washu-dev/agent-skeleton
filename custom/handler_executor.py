@@ -1,10 +1,10 @@
 """A2A executor that wraps any AgentHandler.
 
-Mirrors executor.py's dual-channel response (DataPart artifact + text message
+Mirrors core/executor.py's dual-channel response (DataPart artifact + text message
 with structured_output metadata) but delegates the actual work to a user-supplied
-AgentHandler.handle_structured(). Uses the a2a_runtime guard so this module — and
-therefore `import agent_skeleton` — still imports when a2a-sdk is absent; serving
-raises a clear error via require_a2a().
+AgentHandler.handle_structured(). Uses the core.a2a_runtime guard so this module —
+and therefore `import agent_skeleton` — still imports when a2a-sdk is absent;
+serving raises a clear error via require_a2a().
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import contextlib
 import inspect
 from typing import TYPE_CHECKING
 
-from agent_skeleton.a2a_runtime import (
+from ..core.a2a_runtime import (
     AgentExecutorBase,
     TaskState,
     data_part,
@@ -22,7 +22,7 @@ from agent_skeleton.a2a_runtime import (
     task_updater,
     text_part,
 )
-from agent_skeleton.base import AgentHandler, FileInput
+from .base import AgentHandler, FileInput
 
 if TYPE_CHECKING:
     from a2a.server.agent_execution import RequestContext

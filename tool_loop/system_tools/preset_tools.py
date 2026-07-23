@@ -17,7 +17,7 @@ import operator
 from datetime import datetime, timezone
 from typing import Annotated, Any, Callable
 
-from ..tool_engine import tool
+from ...core.tool_engine import tool
 
 ToolFn = Callable[..., dict[str, Any]]
 

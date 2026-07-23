@@ -1,25 +1,26 @@
-# Endpoint wrapper (optional feature)
+# OPTION 1 — wrap an endpoint
 
-This folder is a **third, optional** way to build an agent on top of the skeleton,
-separate from the two main template paths:
+This is one of the skeleton's three build options (alongside
+[`../tool_loop/`](../tool_loop/README.md) and [`../custom/`](../custom/README.md)):
 
-- **Path A** — hand-author an LLM tool loop (typed `@tool` functions in `tools.py`
-  + `prompt.py`). See the repo `README.md`.
-- **Path B** — wrap your own code as a custom-upload handler (`AgentHandler` +
-  `handle_structured`). See `INTEGRATION_GUIDE.md`.
-- **Endpoint wrapper (here)** — point an LLM loop at an *existing HTTP/JSON or A2A
+- **Wrap an endpoint (here)** — point an LLM loop at an *existing HTTP/JSON or A2A
   endpoint*. You write **no tool bodies and no handler**: the model turns each user
   request into a call to your endpoint, reads the reply, and answers.
+- **[`../tool_loop/`](../tool_loop/README.md)** — hand-author an LLM tool loop (typed
+  `@tool` functions in `tool_loop/tools.py` + `tool_loop/prompt.py`).
+- **[`../custom/`](../custom/README.md)** — wrap your own code as a handler
+  (`AgentHandler` + `handle_structured`; see `custom/INTEGRATION_GUIDE.md`).
 
-Everything for this feature — code, tests, and docs — lives in this folder. The
-rest of the skeleton references it only in passing.
+Everything unique to this option — code, tests, and docs — lives in this folder; it
+imports the shared engine from [`../core/`](../core/) like the other two paths.
 
 ## When to use it
 
 Use the endpoint wrapper when you already have a running web service (your own or a
 third party's) and just want to expose it to the network as a conversational agent,
 without writing any glue code. If you have *code* rather than a running service, use
-Path B. If you want the model to reason across several tools you author, use Path A.
+the [`custom/`](../custom/README.md) path. If you want the model to reason across
+several tools you author, use the [`tool_loop/`](../tool_loop/README.md) path.
 
 ## Quick start
 

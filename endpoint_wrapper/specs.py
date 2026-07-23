@@ -3,15 +3,15 @@
 These build ``AgentSpec`` objects whose tools are ``call_endpoint`` (or typed
 per-operation tools) bound to an external API — the model only decides *what* to
 send, never the URL/auth. They flow through the SAME frozen engine
-(``agent_skeleton.llm_loop.run_tool_loop``) as every other agent; only the spec
-differs. See this folder's README.md for the full picture.
+(``agent_skeleton.core.llm_loop.run_tool_loop``) as every other agent; only the
+spec differs. See this folder's README.md for the full picture.
 """
 from __future__ import annotations
 
 from typing import Any
 
-from ..config import MAX_TOOL_STEPS
-from ..spec import AgentSpec, ToolFn
+from ..core.config import MAX_TOOL_STEPS
+from ..core.spec import AgentSpec, ToolFn
 from .call_endpoint import (
     EndpointConfig,
     OperationConfig,

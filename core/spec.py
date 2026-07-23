@@ -63,14 +63,14 @@ class AgentSpec:
     def run_normalize(self, raw_text: str, tool_log: list[dict[str, Any]]) -> dict[str, Any]:
         if self.normalize is not None:
             return self.normalize(raw_text, tool_log)
-        from .prompt import normalize_result
+        from ..tool_loop.prompt import normalize_result
 
         return normalize_result(raw_text, tool_log)
 
     def validate(self) -> None:
         """Fail fast if this spec's schemas and functions disagree. Reuses the
         same alignment check the template runs at startup."""
-        from .tools import validate_tool_registry
+        from ..tool_loop.tools import validate_tool_registry
 
         validate_tool_registry(self.tool_schemas, self.tool_registry)
 
@@ -80,9 +80,9 @@ def default_demo_spec() -> AgentSpec:
 
     Keeps backward compatibility: ``run_agent`` / ``create_app`` with no spec
     behave exactly as the stock template did."""
+    from ..tool_loop.prompt import SYSTEM_PROMPT, normalize_result
+    from ..tool_loop.tools import TOOL_REGISTRY, TOOL_SCHEMAS
     from .config import AGENT_NAME
-    from .prompt import SYSTEM_PROMPT, normalize_result
-    from .tools import TOOL_REGISTRY, TOOL_SCHEMAS
 
     return AgentSpec(
         name=AGENT_NAME,
@@ -106,7 +106,7 @@ def llm_wrapper_spec(
 ) -> AgentSpec:
     """Build a plain LLM-wrapper spec: the creator's OWN system prompt, optionally
     armed with PRESET TOOLS chosen by name from the built-in catalog
-    (``system_tools/preset_tools``).
+    (``tool_loop/system_tools/preset_tools``).
 
     This is the "LLM Agent" option, routed through the same frozen engine as
     everything else. With no tools it is a single LLM turn; with tools the loop lets
@@ -117,7 +117,7 @@ def llm_wrapper_spec(
 
     Validated before return, so an unknown preset-tool name or a misaligned schema
     fails here rather than at serve time."""
-    from .system_tools.preset_tools import resolve_preset_tools
+    from ..tool_loop.system_tools.preset_tools import resolve_preset_tools
 
     schemas, registry = resolve_preset_tools(preset_tools or [])
     schemas = [*schemas, *(extra_schemas or [])]

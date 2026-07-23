@@ -1,6 +1,6 @@
-"""System tools — reusable, pre-built tool bones a Path-A agent can be armed with.
+"""System tools — reusable, pre-built tool bones a tool_loop (OPTION 2) agent can be armed with.
 
-Unlike the zone-4 tool BODIES in ``tools.py`` (the agent author's own capabilities),
+Unlike the tool BODIES in ``tools.py`` (the agent author's own capabilities),
 these are ready-made tools a creator selects by name via ``spec.llm_wrapper_spec``.
 
 Today this package ships the preset catalog (``calculator``, ``current_time``).

@@ -4,8 +4,8 @@ Each API operation becomes its own Chat Completions function tool with a real ty
 argument schema; the tool fn builds the concrete method + path + query + body and
 issues it. Stdlib-only; the only network is a localhost stub (mirrors test_manager).
 Run:
-    python -m pytest agent_skeleton/tests/test_operations.py -q
-    python -m agent_skeleton.tests.test_operations
+    python -m pytest agent_skeleton/endpoint_wrapper/tests/test_operations.py -q
+    python -m agent_skeleton.endpoint_wrapper.tests.test_operations
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import re
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from agent_skeleton.spec import AgentSpec
+from agent_skeleton.core.spec import AgentSpec
 from agent_skeleton.endpoint_wrapper import (
     EndpointConfig,
     OperationConfig,

@@ -8,15 +8,15 @@ assembly, which is all the new logic). Run:
 """
 from __future__ import annotations
 
-from agent_skeleton.spec import llm_wrapper_spec
-from agent_skeleton.system_tools.preset_tools import (
+from agent_skeleton.core.spec import llm_wrapper_spec
+from agent_skeleton.tool_loop.system_tools.preset_tools import (
     PRESET_TOOLS,
     available_preset_tools,
     calculator,
     current_time,
     resolve_preset_tools,
 )
-from agent_skeleton.tools import validate_tool_registry
+from agent_skeleton.tool_loop.tools import validate_tool_registry
 
 
 def test_calculator_basic() -> None:

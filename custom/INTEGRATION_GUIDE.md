@@ -1,6 +1,6 @@
 # Integration Guide: Turning Your Code Into an Agent
 
-**Who this is for:** you have working code that does something useful (reads a PDF, calls an API, crunches data, runs an LLM loop) and you want to turn it into an agent — this is **Path B** of `agent_skeleton`. You don't rewrite your code; you add one small adapter, run it locally to confirm it works, and hand it over to be wrapped and ingested.
+**Who this is for:** you have working code that does something useful (reads a PDF, calls an API, crunches data, runs an LLM loop) and you want to turn it into an agent — this is **OPTION 3 (the custom-code path)** of `agent_skeleton`. You don't rewrite your code; you add one small adapter, run it locally to confirm it works, and hand it over to be wrapped and ingested.
 
 **The 30-second version:**
 1. You do **not** rewrite your code. You add one small **adapter** file (conventionally `handler.py`) that exposes your existing code through a fixed shape the system understands.

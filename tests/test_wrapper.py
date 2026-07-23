@@ -8,8 +8,8 @@ Deliberately dependency-free: stdlib only (no a2a-sdk, no openai, no network). R
 """
 from __future__ import annotations
 
-from agent_skeleton import llm_loop
-from agent_skeleton.spec import AgentSpec, default_demo_spec
+from agent_skeleton.core import llm_loop
+from agent_skeleton.core.spec import AgentSpec, default_demo_spec
 
 
 def _noop_spec() -> AgentSpec:

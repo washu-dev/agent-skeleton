@@ -3,8 +3,8 @@
 Each builder assembles a system prompt from an agent's card answers (name,
 description) plus its endpoint/operation configuration, so "describing the agent
 IS configuring its behavior." The output contract each prompt requests MUST stay
-in lockstep with ``agent_skeleton.prompt.normalize_result`` (answer + tools_used),
-or the normalized result silently falls back to raw text.
+in lockstep with ``agent_skeleton.tool_loop.prompt.normalize_result`` (answer +
+tools_used), or the normalized result silently falls back to raw text.
 """
 from __future__ import annotations
 

@@ -13,9 +13,9 @@ import argparse
 import os
 from pathlib import Path
 
-from ..a2a_runtime import require_a2a
-from ..config import AGENT_NAME, DEFAULT_CARD_PATH, env_advertise_url, env_host, env_model, env_port
-from ..serve import create_app, load_agent_card
+from ..core.a2a_runtime import require_a2a
+from ..core.config import AGENT_NAME, DEFAULT_CARD_PATH, env_advertise_url, env_host, env_model, env_port
+from ..core.serve import create_app, load_agent_card
 from .call_endpoint import EndpointConfig
 from .specs import endpoint_wrapper_spec
 

@@ -19,7 +19,10 @@ DEFAULT_MODEL = "gpt-4o-mini"     # hosted model name, or your vLLM --served-mod
 MAX_TOOL_STEPS = 4                # cap on tool-call loop iterations
 
 # --- Paths ----------------------------------------------------------------
-PACKAGE_DIR = Path(__file__).resolve().parent
+# This file lives in ``agent_skeleton/core/``; the package root (where
+# ``agent.card.json`` lives) is one level up.
+CORE_DIR = Path(__file__).resolve().parent
+PACKAGE_DIR = CORE_DIR.parent
 DEFAULT_CARD_PATH = PACKAGE_DIR / "agent.card.json"
 
 

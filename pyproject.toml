@@ -18,12 +18,15 @@ dependencies = [
 
 # pyproject.toml lives *inside* the package directory, so map the `agent_skeleton`
 # import package to "." (this directory). Subpackages must be listed explicitly:
-# with package-dir mapped to ".", setuptools find-discovery would treat
-# system_tools/ and endpoint_wrapper/ as *top-level* packages, so we name them here.
+# with package-dir mapped to ".", setuptools find-discovery would treat the
+# subfolders as *top-level* packages, so we name each one here.
 [tool.setuptools]
 packages = [
     "agent_skeleton",
-    "agent_skeleton.system_tools",
+    "agent_skeleton.core",
+    "agent_skeleton.tool_loop",
+    "agent_skeleton.tool_loop.system_tools",
+    "agent_skeleton.custom",
     "agent_skeleton.endpoint_wrapper",
 ]
 

@@ -1,8 +1,8 @@
 """Tests for the multi-endpoint "manager" spec (Feature B core).
 
 Stdlib-only; the only network is a localhost stub (mirrors test_wrapper). Run:
-    python -m pytest agent_skeleton/tests/test_manager.py -q
-    python -m agent_skeleton.tests.test_manager
+    python -m pytest agent_skeleton/endpoint_wrapper/tests/test_manager.py -q
+    python -m agent_skeleton.endpoint_wrapper.tests.test_manager
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from agent_skeleton.spec import AgentSpec
+from agent_skeleton.core.spec import AgentSpec
 from agent_skeleton.endpoint_wrapper import (
     EndpointConfig,
     endpoint_tool_name,
