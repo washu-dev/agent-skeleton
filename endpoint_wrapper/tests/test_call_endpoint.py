@@ -141,6 +141,17 @@ def test_error_body_redacts_secrets():
     # Basic auth credentials are masked too (multi-endpoint managers may use them).
     basic = _redact("401 Authorization: Basic dXNlcjpwYXNzd29yZA==")
     assert "dXNlcjpwYXNzd29yZA==" not in basic and "<redacted>" in basic
+    # JSON-encoded bodies (the most common way an upstream echoes an error) must be
+    # masked too — the key/value there is `"api_key": "..."`, not `api_key=...`.
+    for body, secret in (
+        ('{"api_key": "sk-SECRET1"}', "SECRET1"),
+        ('{"token":"tok-SECRET2"}', "SECRET2"),
+        ('{"access_token": "ya29.SECRET3", "expires": 3600}', "SECRET3"),
+        ('{"error": "bad key", "client_secret": "SECRET4"}', "SECRET4"),
+        ('{"password": "SECRET5"}', "SECRET5"),
+    ):
+        masked_json = _redact(body)
+        assert secret not in masked_json and "<redacted>" in masked_json, masked_json
 
 
 def test_wrapper_spec_validates_and_dispatches():

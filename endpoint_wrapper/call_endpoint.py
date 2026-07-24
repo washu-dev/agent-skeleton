@@ -47,14 +47,25 @@ _OPENER = urllib.request.build_opener(_NoRedirectHandler)
 
 # Mask obvious secret-shaped substrings if a misbehaving upstream echoes them in
 # an error body (the body is surfaced to the model, hence into the trace).
+# Common secret keys, matched case-insensitively in the key/value patterns below.
+_SECRET_KEY = (
+    r"(?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret"
+    r"|token|secret|password|passwd|pwd)"
+)
 _SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(?i)(bearer)\s+\S+"), r"\1 <redacted>"),
     # Basic auth (base64 user:pass) — same shape as Bearer. Digest/AWS4-HMAC and
     # other schemes are not exhaustively covered; this is best-effort masking of
     # secret-shaped substrings an upstream might echo, not a guarantee.
     (re.compile(r"(?i)(basic)\s+\S+"), r"\1 <redacted>"),
-    (re.compile(r"(?i)(api[_-]?key\s*[:=]\s*)\S+"), r"\1<redacted>"),
-    (re.compile(r"(?i)(token\s*[:=]\s*)\S+"), r"\1<redacted>"),
+    # key/value secrets. The key and value may each be quoted, so JSON bodies
+    # (`"api_key": "sk-..."`, the most common way an upstream echoes an error) are
+    # masked as well as form/`=` styles. The value match stops at JSON delimiters
+    # ("/,/;/}) so the surrounding structure stays intact and only the value is hidden.
+    (
+        re.compile(r"(?i)([\"']?" + _SECRET_KEY + r"[\"']?\s*[:=]\s*)([\"']?)[^\"'\s,;}]+"),
+        r"\1\2<redacted>",
+    ),
 ]
 
 
